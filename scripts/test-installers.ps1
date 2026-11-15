@@ -10,14 +10,17 @@ $version = ([xml](Get-Content (Join-Path $repoRoot 'SilNet.csproj'))).Project.Pr
 $results = [Collections.Generic.List[string]]::new()
 $installed = $false
 try {
-    foreach ($kind in @('small', 'full', 'small-again')) {
+    foreach ($kind in @('bootstrap', 'small', 'full', 'small-again')) {
         $suffix = if ($kind -eq 'full') { 'Full-' } else { '' }
         $setup = Join-Path $artifacts "SilNet-Setup-$suffix$version-win-x64.exe"
+        if ($kind -eq 'bootstrap') { $setup = Join-Path $artifacts "bootstrap-test/SilNet-Setup-$version-win-x64.exe" }
         $logPath = Join-Path $artifacts "installer-$kind.log"
         $arguments = @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/NOICONS', ('/DIR="'+$target+'"'), ('/LOG="'+$logPath+'"'))
         $process = Start-Process $setup -ArgumentList $arguments -WindowStyle Hidden -Wait -PassThru
         if ($process.ExitCode -notin @(0,3010)) { throw "Kurulum başarısız: $kind, $($process.ExitCode). $(Get-Content $logPath -Tail 40)" }
         $installed = $true
+        if ($kind -eq 'bootstrap' -and !(Select-String -LiteralPath $logPath -SimpleMatch 'Microsoft Desktop Runtime installer exit code:')) { throw 'Gerçek .NET kurulum yolu çalışmadı.' }
+        if ($kind -eq 'small' -and !(Select-String -LiteralPath $logPath -SimpleMatch 'skipping download')) { throw 'Mevcut runtime için indirme atlanmadı.' }
         $report = Join-Path $artifacts "test-results-installed-$kind.json"
         $process = Start-Process (Join-Path $target 'SilNet.exe') -ArgumentList @('--self-test', ('"'+$report+'"')) -WindowStyle Hidden -Wait -PassThru
         if ($process.ExitCode -ne 0) { throw "Kurulu uygulama testleri başarısız: $kind" }

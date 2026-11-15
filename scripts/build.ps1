@@ -2,7 +2,8 @@ param(
     [string]$Output = (Join-Path $PSScriptRoot '..\artifacts'),
     [string]$Dotnet = 'dotnet',
     [string]$Iscc = '',
-    [switch]$SkipInstaller
+    [switch]$SkipInstaller,
+    [switch]$BuildBootstrapTest
 )
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
@@ -42,6 +43,15 @@ try {
             $driverSha = (Get-FileHash -LiteralPath (Join-Path $package.Path 'engines\zapret2\WinDivert64.sys') -Algorithm SHA256).Hash
             & $Iscc ('/DAppVersion='+$version) ('/DPublishDir='+$package.Path) ('/DReleaseDir='+$releaseRoot) ('/DDriverSha='+$driverSha) ('/DFullPackage='+$package.Full) ('/DRuntimeUrl='+$runtime.url) ('/DRuntimeSha='+$runtime.sha256) (Join-Path $repoRoot 'installer\SilNet.iss')
             if ($LASTEXITCODE -ne 0) { throw 'Kurulum paketi oluşturulamadı.' }
+        }
+        if ($BuildBootstrapTest) {
+            if ($env:GITHUB_ACTIONS -ne 'true') { throw 'Runtime kurulum denemesi yalnızca geçici CI makinesinde yapılır.' }
+            $bootstrapTestDir = Join-Path $releaseRoot 'bootstrap-test'
+            New-Item -ItemType Directory -Force $bootstrapTestDir | Out-Null
+            # Test-only binary exercises the real download/install even on a runner with .NET present.
+            # It stays in a subdirectory and is never included in release assets.
+            & $Iscc ('/DAppVersion='+$version) ('/DPublishDir='+$smallRoot) ('/DReleaseDir='+$bootstrapTestDir) ('/DDriverSha='+$driverSha) /DFullPackage=0 /DForceRuntimeBootstrap=1 ('/DRuntimeUrl='+$runtime.url) ('/DRuntimeSha='+$runtime.sha256) (Join-Path $repoRoot 'installer\SilNet.iss')
+            if ($LASTEXITCODE -ne 0) { throw 'Bootstrap test paketi oluşturulamadı.' }
         }
     }
     $checksums = Get-ChildItem -LiteralPath $releaseRoot -File | Where-Object { $_.Name -match '^SilNet-.*\.(zip|exe)$' } | ForEach-Object {

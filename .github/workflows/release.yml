@@ -24,7 +24,7 @@ jobs:
         run: choco install innosetup --yes --no-progress
       - name: Build, integration tests and installer
         shell: pwsh
-        run: ./scripts/build.ps1
+        run: ./scripts/build.ps1 -BuildBootstrapTest
       - name: Verify small and full installer upgrades
         shell: pwsh
         run: ./scripts/test-installers.ps1

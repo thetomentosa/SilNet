@@ -51,11 +51,13 @@ var
   RuntimeFile: String;
 begin
   Result := '';
+#ifndef ForceRuntimeBootstrap
   if HasDesktopRuntime then
   begin
     Log('Compatible .NET 10 x64 Desktop Runtime is already installed; skipping download.');
     Exit;
   end;
+#endif
   try
     RuntimeDownload.Clear;
     RuntimeDownload.Add('{#RuntimeUrl}', 'windowsdesktop-runtime.exe', '{#RuntimeSha}');

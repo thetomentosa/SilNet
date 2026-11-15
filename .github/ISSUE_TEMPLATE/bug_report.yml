@@ -1,0 +1,29 @@
+name: Bağlantı veya uygulama sorunu
+description: SilNet sorunu bildir
+body:
+  - type: input
+    id: version
+    attributes:
+      label: SilNet sürümü
+    validations:
+      required: true
+  - type: input
+    id: provider
+    attributes:
+      label: İnternet sağlayıcısı ve bağlantı türü
+      placeholder: Örn. Türk Telekom VDSL
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Ne oldu?
+      description: Beklenen sonucu, hatayı ve denediğin yöntemi yaz.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Günlük (isteğe bağlı)
+      description: Tanılama günlüğünü eklemeden önce kişisel yolları ve özel alan adlarını temizle.
+      render: text

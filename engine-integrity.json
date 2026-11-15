@@ -1,0 +1,12 @@
+{
+  "cygwin1.dll": "103104a52e5293ce418944725df19e2bf81ad9269b9a120d71d39028e821499b",
+  "WinDivert.dll": "c1e060ee19444a259b2162f8af0f3fe8c4428a1c6f694dce20de194ac8d7d9a2",
+  "WinDivert64.sys": "8da085332782708d8767bcace5327a6ec7283c17cfb85e40b03cd2323a90ddc2",
+  "winws2.exe": "9f25492575ff7c3f9e0d6211daac85704c309a0ca695423f0276d9ebde3156aa",
+  "lua/zapret-antidpi.lua": "6d1fa9168e5de1682fef91fd174f68b58c50f6739ef00f42ca7db2b940b6246d",
+  "lua/zapret-auto.lua": "23a9b99a776d868d92f4cc0ee5110f5c1f12fe746620d9c0337022dbc2f52df0",
+  "lua/zapret-lib.lua": "8da634fb9bdd1778edf7b71ff5c6901800522d38119a6c16e4138a84d89e5099",
+  "lua/zapret-obfs.lua": "a6a3808d1dd21977aeae34603289b46e09dd8ebc4aef31ba6544224faaa2444b",
+  "lua/zapret-pcap.lua": "6866c37c92fbc62075accf94228da48af618c7f416edc682eba99b2196e05f45",
+  "lua/zapret-tests.lua": "82664cb50a751a531b63dce094ac03de5045b16b489e726ff32a9a1034811459"
+}

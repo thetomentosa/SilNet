@@ -1,0 +1,46 @@
+name: Build and release SilNet
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-dotnet@v6.1.0
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: '3.x'
+      - name: Install free Inno Setup compiler
+        run: choco install innosetup --yes --no-progress
+      - name: Build, integration tests and installer
+        shell: pwsh
+        run: ./scripts/build.ps1
+      - name: Preserve build artifacts
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: SilNet-windows-x64
+          path: |
+            artifacts/SilNet-*.exe
+            artifacts/SilNet-*.zip
+            artifacts/SHA256SUMS.txt
+            artifacts/test-results.json
+      - name: Publish tagged release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $projectVersion = ([xml](Get-Content SilNet.csproj)).Project.PropertyGroup.Version
+          if ($env:GITHUB_REF_NAME -ne ('v' + $projectVersion)) { throw 'Tag and project versions do not match.' }
+          $assets = @(Get-ChildItem artifacts/SilNet-*.exe, artifacts/SilNet-*.zip, artifacts/SHA256SUMS.txt | ForEach-Object FullName)
+          gh release create $env:GITHUB_REF_NAME @assets --title "SilNet $projectVersion" --notes-file RELEASE_NOTES.md --verify-tag

@@ -1,0 +1,45 @@
+SilNet 0.2 — Third-party notices
+
+The SilNet UI and management code is original, MIT-licensed code.
+Some community strategy parameters were adapted from SplitWire-Turkey
+(Copyright (c) 2025 Çağrı Taşkın, MIT). See SplitWire-MIT.txt.
+https://github.com/cagritaskn/SplitWire-Turkey/blob/main/src/SplitWireTurkey/Resources/zapret/zapret-winws2/presets2.txt
+
+Zapret2 / winws2 and Lua files
+Copyright (c) 2016-2026 bol-van and contributors. MIT.
+Source: https://github.com/bol-van/zapret2
+Unmodified winws2, Cygwin and Lua binaries/scripts obtained from:
+https://github.com/bol-van/zapret-win-bundle/tree/6b4375fa04f6bd7017eec379e16e462d3ea8df66/zapret-winws
+See Zapret2-MIT.txt. Binary provenance and pinned SHA-256 values are recorded
+in the source package's engine-integrity.json. A checksum confirms that the
+files match this selected upstream snapshot, not an independent security audit.
+
+WinDivert 2.2.2-A
+Copyright basil00 and contributors. LGPLv3 option selected.
+https://github.com/basil00/WinDivert
+DLL and driver obtained from the official x64 release:
+https://github.com/basil00/WinDivert/releases/download/v2.2.2/WinDivert-2.2.2-A.zip
+See WinDivert-LICENSE.txt, LGPL-3.0.txt and GPL-3.0.txt.
+Included upstream source snapshots are under sources/. The original .dll
+and .sys are distributed separately, without modification. Windows driver
+signature rules apply. No restriction is imposed on reverse engineering for
+debugging library modifications. This development preview pins hashes for
+safety; a developer can replace the library and rebuild the integrity list
+and the application using the supplied application source.
+
+Cygwin API library, cygwin1.dll 3.4.10
+Copyright Cygwin authors and contributors. LGPLv3 or later with the Cygwin
+linking exception; the source tree also includes components with their own
+notices. See the included corresponding 3.4.10 source tree under sources/.
+https://cygwin.com/licensing.html
+https://github.com/cygwin/cygwin/tree/89a1e4a573d40b233011402f42630b970ff71291
+
+Microsoft .NET runtime and Windows Desktop runtime
+MIT and third-party notices. See DOTNET-LICENSE.txt,
+DOTNET-THIRD-PARTY-NOTICES.txt and the runtime notices included by Microsoft.
+https://github.com/dotnet/runtime
+https://github.com/dotnet/wpf
+
+Redistributors must preserve the applicable license notices and supply
+corresponding library sources and build materials as required. The application
+MIT license does not relicense any third-party component.

@@ -2,10 +2,12 @@ using System.IO;
 namespace SilNet;
 public static class AppLog
 {
+    public static bool Suppress { get; set; }
     public static string DirectoryPath => Path.Combine(Settings.DirectoryPath, "logs");
     private static readonly object Sync = new();
     public static void Write(string source, string message)
     {
+        if (Suppress) return;
         try
         {
             lock (Sync)

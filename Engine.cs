@@ -9,7 +9,7 @@ using System.Text.Json;
 using Microsoft.Win32.SafeHandles;
 
 namespace SilNet;
-public sealed record WireMessage(string Kind, string Text = "", string[]? Hosts = null, string Id = "");
+public sealed record WireMessage(string Kind, string Text = "", string[]? Hosts = null, string Id = "", bool SecureDns = true, bool IncludeQuic = false);
 public sealed class EngineCommandException(string message) : IOException(message);
 
 public sealed class EngineClient(bool elevate = true) : IAsyncDisposable
@@ -115,14 +115,15 @@ public sealed class EngineClient(bool elevate = true) : IAsyncDisposable
     }
     public async Task PingAsync() => await CommandAsync(new("ping"));
     internal int? WorkerId => connection?.Process.Id;
-    public async Task DryRunAsync(string profile, string[] hosts) => await CommandAsync(new("dryrun", profile, hosts));
-    public async Task StartAsync(string profile, string[] hosts) => await CommandAsync(new("start", profile, hosts));
+    internal int? LastExitCode { get; private set; }
+    public async Task DryRunAsync(string profile, string[] hosts, bool includeQuic = false) => await CommandAsync(new("dryrun", profile, hosts, IncludeQuic: includeQuic));
+    public async Task StartAsync(string profile, string[] hosts, bool secureDns = true, bool includeQuic = false) => await CommandAsync(new("start", profile, hosts, SecureDns: secureDns, IncludeQuic: includeQuic));
     public async Task StopAsync() { if (connection?.Pipe.IsConnected == true) await CommandAsync(new("stop")); }
     public async ValueTask DisposeAsync()
     {
         try { await StopAsync(); } catch { }
         var process = connection?.Process; connection?.Pipe.Dispose();
-        if (process is not null) { try { await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5)); } catch { } }
+        if (process is not null) { try { await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5)); LastExitCode = process.ExitCode; } catch { } }
         CloseConnection();
     }
     [DllImport("kernel32.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool GetNamedPipeClientProcessId(SafePipeHandle pipe, out uint processId);
@@ -142,7 +143,7 @@ public static class EngineWorker
             if (!string.Equals(parent.MainModule?.FileName, Environment.ProcessPath, StringComparison.OrdinalIgnoreCase)) throw new IOException("Arayüz dosyası doğrulanamadı.");
         }
         catch (Exception ex) { AppLog.Write("Worker connect", ex.ToString()); return; }
-        using var writer = new StreamWriter(pipe, new UTF8Encoding(false), leaveOpen: true) { AutoFlush = true };
+        var writer = new StreamWriter(pipe, new UTF8Encoding(false), leaveOpen: true) { AutoFlush = true };
         using var reader = new StreamReader(pipe, Encoding.UTF8, leaveOpen: true);
         var sendLock = new SemaphoreSlim(1);
         async Task Send(WireMessage msg)
@@ -150,10 +151,11 @@ public static class EngineWorker
             await sendLock.WaitAsync();
             try { await writer.WriteLineAsync(JsonSerializer.Serialize(msg)); } finally { sendLock.Release(); }
         }
-        Process? engine = null; KillJob? job = null; string? temporaryHosts = null;
+        Process? engine = null; KillJob? job = null; string? temporaryHosts = null; DnsBypass? dns = null;
         void Stop()
         {
             var previous = engine; engine = null; job?.Dispose(); job = null;
+            dns?.Dispose(); dns = null;
             if (previous is not null) { try { if (!previous.HasExited) previous.Kill(true); previous.WaitForExit(4000); } catch { } previous.Dispose(); }
             if (temporaryHosts is not null) { try { File.Delete(temporaryHosts); } catch { } temporaryHosts = null; }
         }
@@ -175,10 +177,11 @@ public static class EngineWorker
                     var conflicts = Diagnostics.Conflicts();
                     if (command.Kind == "start" && conflicts.Length > 0) throw new IOException("Önce diğer DPI uygulamasını kapatın: " + string.Join(", ", conflicts));
                     await EngineIntegrity.VerifyAsync();
+                    if (command.Kind == "start" && command.SecureDns) dns = new DnsBypass(hosts);
                     temporaryHosts = Path.Combine(Path.GetTempPath(), "SilNet-hosts-" + Guid.NewGuid().ToString("N") + ".txt");
                     await File.WriteAllLinesAsync(temporaryHosts, hosts, new UTF8Encoding(false));
                     var info = new ProcessStartInfo(Path.Combine(EngineIntegrity.EngineDirectory, "winws2.exe")) { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = EngineIntegrity.EngineDirectory, RedirectStandardOutput = true, RedirectStandardError = true };
-                    foreach (var arg in profile.Arguments(EngineIntegrity.EngineDirectory, temporaryHosts)) info.ArgumentList.Add(arg);
+                    foreach (var arg in profile.Arguments(EngineIntegrity.EngineDirectory, temporaryHosts, command.IncludeQuic)) info.ArgumentList.Add(arg);
                     if (command.Kind == "dryrun") info.ArgumentList.Add("--dry-run");
                     engine = Process.Start(info) ?? throw new IOException("Motor başlatılamadı.");
                     job = new KillJob(); job.Assign(engine);
@@ -203,7 +206,13 @@ public static class EngineWorker
             }
         }
         catch (Exception ex) { AppLog.Write("Worker", ex.ToString()); }
-        finally { Stop(); }
+        finally
+        {
+            Stop();
+            // StreamWriter.Dispose flushes even an empty buffer. Peer EOF is a
+            // normal shutdown, so a final flush on a closed pipe must not escape.
+            try { writer.Dispose(); } catch (IOException) { } catch (ObjectDisposedException) { }
+        }
     }
     [DllImport("kernel32.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool GetNamedPipeServerProcessId(SafePipeHandle pipe, out uint processId);
 }

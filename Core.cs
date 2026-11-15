@@ -21,12 +21,13 @@ public sealed record Profile(string Id, string Name, string Detail, string Strat
     ];
     public static Profile Find(string id) => All.FirstOrDefault(p => p.Id == id) ?? throw new InvalidDataException("Geçersiz profil.");
     public override string ToString() => Name;
-    public string[] Arguments(string engineDir, string hostsPath)
+    public string[] Arguments(string engineDir, string hostsPath, bool includeQuic = false)
     {
-        var args = new List<string> { "--wf-tcp-out=443", "--wf-udp-out=443", "--lua-init=@" + Path.Combine(engineDir, "lua", "zapret-lib.lua"), "--lua-init=@" + Path.Combine(engineDir, "lua", "zapret-antidpi.lua"), "--filter-tcp=443", "--filter-l7=tls", "--hostlist=" + hostsPath, "--out-range=-d10", "--payload=tls_client_hello" };
+        var args = new List<string> { "--wf-tcp-out=443", "--lua-init=@" + Path.Combine(engineDir, "lua", "zapret-lib.lua"), "--lua-init=@" + Path.Combine(engineDir, "lua", "zapret-antidpi.lua"), "--filter-tcp=443", "--filter-l7=tls", "--hostlist=" + hostsPath, "--out-range=-d10", "--payload=tls_client_hello" };
+        if (includeQuic) args.Insert(1, "--wf-udp-out=443");
         if (Id == "fake") args.Add("--lua-desync=fake:blob=fake_default_tls:tcp_md5:tcp_seq=-10000:repeats=6");
         args.Add("--lua-desync=" + Strategy);
-        args.AddRange(["--new", "--filter-udp=443", "--filter-l7=quic", "--hostlist=" + hostsPath, "--payload=quic_initial", "--lua-desync=fake:blob=fake_default_quic:repeats=6"]);
+        if (includeQuic) args.AddRange(["--new", "--filter-udp=443", "--filter-l7=quic", "--hostlist=" + hostsPath, "--payload=quic_initial", "--lua-desync=fake:blob=fake_default_quic:repeats=6"]);
         return args.ToArray();
     }
 }
@@ -57,6 +58,9 @@ public sealed class Settings
     public string ProviderId { get; set; } = "auto";
     public bool AutoUpdates { get; set; } = true;
     public bool Automatic { get; set; } = true;
+    public bool SecureDns { get; set; } = true;
+    public bool UseQuic { get; set; }
+    public bool OnboardingComplete { get; set; }
     public Dictionary<string, ConnectionMemory> Networks { get; set; } = new();
     public string[] Hosts { get; set; } = Domains.Defaults;
     public static string DirectoryPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SilNet");
@@ -103,27 +107,39 @@ public static class EngineIntegrity
     }
 }
 
-public sealed record ProbeResult(string Host, bool Success, string Detail, long Milliseconds);
+public sealed record ProbeResult(string Host, bool Success, string Detail, long Milliseconds, long DnsMilliseconds = 0)
+{
+    public string TotalLabel => $"{Milliseconds} ms toplam";
+    public string TimingInfo => $"DNS: {DnsMilliseconds} ms · Toplam HTTPS: {Milliseconds} ms. Bu değer Discord ses veya oyun pingi değildir.";
+}
 public static class Diagnostics
 {
     public static async Task<ProbeResult> ProbeAsync(string host, CancellationToken cancellation = default)
     {
         host = Domains.Normalize(host);
         var watch = Stopwatch.StartNew();
+        long dnsMilliseconds = 0;
         try
         {
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
+            deadline.CancelAfter(TimeSpan.FromSeconds(12));
+            var addresses = await System.Net.Dns.GetHostAddressesAsync(host, deadline.Token);
+            dnsMilliseconds = watch.ElapsedMilliseconds;
+            if (addresses.Any(ip => ip.ToString() == "195.175.254.2")) return new(host, false, "DNS engelleme yanıtı algılandı; şifreli DNS gerekli", watch.ElapsedMilliseconds);
             using var handler = new HttpClientHandler { AllowAutoRedirect = false, UseProxy = false };
-            using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(8), DefaultRequestVersion = System.Net.HttpVersion.Version11, DefaultVersionPolicy = HttpVersionPolicy.RequestVersionExact };
+            using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(12), DefaultRequestVersion = System.Net.HttpVersion.Version11, DefaultVersionPolicy = HttpVersionPolicy.RequestVersionExact };
             string path = host == "discord.com" ? "/api/v10/gateway" : "/";
             using var request = new HttpRequestMessage(HttpMethod.Get, "https://" + host + path);
-            request.Headers.UserAgent.ParseAdd("SilNet/0.2");
-            using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellation);
+            request.Headers.UserAgent.ParseAdd("SilNet/0.3");
+            using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, deadline.Token);
             // 4xx responses prove TLS/HTTP transport, but do not prove application access.
             var success = (int)response.StatusCode is >= 200 and < 400;
-            return new(host, success, success ? "HTTPS yanıtı alındı" : $"HTTP {(int)response.StatusCode} — erişim doğrulanamadı", watch.ElapsedMilliseconds);
+            return new(host, success, success ? "HTTPS yanıtı alındı" : $"HTTP {(int)response.StatusCode} — erişim doğrulanamadı", watch.ElapsedMilliseconds, dnsMilliseconds);
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
         catch (TaskCanceledException) { return new(host, false, "Bağlantı zaman aşımına uğradı", watch.ElapsedMilliseconds); }
+        catch (OperationCanceledException) { return new(host, false, "Bağlantı zaman aşımına uğradı", watch.ElapsedMilliseconds); }
+        catch (System.Net.Sockets.SocketException) { return new(host, false, "DNS çözümlenemedi", watch.ElapsedMilliseconds); }
         catch (HttpRequestException ex) { return new(host, false, ex.HttpRequestError switch { HttpRequestError.NameResolutionError => "DNS çözümlenemedi", HttpRequestError.SecureConnectionError => "Güvenli bağlantı kurulamadı", _ => "HTTPS bağlantısı kurulamadı" }, watch.ElapsedMilliseconds); }
     }
     public static string[] Conflicts() => new[] { "winws", "winws2", "goodbyedpi" }.Where(name => Process.GetProcessesByName(name).Any()).ToArray();

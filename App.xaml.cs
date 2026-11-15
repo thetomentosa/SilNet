@@ -6,6 +6,8 @@ using System.IO;
 namespace SilNet;
 public partial class App : Application
 {
+    public static string? PendingUninstaller;
+    public static bool CleanupUserData;
     private Mutex? instance;
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -15,7 +17,28 @@ public partial class App : Application
         try
         {
             if (e.Args.Length == 1 && e.Args[0] == "--test-child") { await Task.Delay(60000); Shutdown(); return; }
-            if (e.Args.Length == 3 && e.Args[0] == "--worker" && int.TryParse(e.Args[2], out int parentId)) { await EngineWorker.RunAsync(e.Args[1], parentId); Shutdown(); return; }
+            if (e.Args.Length == 2 && e.Args[0] == "--preview-apps")
+            {
+                var apps = new AppsWindow(Domains.Defaults); apps.Left = -10000; apps.Top = -10000; apps.Show();
+                await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.ApplicationIdle); apps.UpdateLayout();
+                var content = (FrameworkElement)apps.Content; var image = new RenderTargetBitmap((int)content.ActualWidth, (int)content.ActualHeight, 96, 96, PixelFormats.Pbgra32); image.Render(content);
+                var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(image)); using (var file = File.Create(e.Args[1])) png.Save(file);
+                apps.Close(); Shutdown(); return;
+            }
+            if (e.Args.Length >= 2 && e.Args[0] == "--preview-setup")
+            {
+                var wizard = new OnboardingWindow(new Settings()); if (e.Args.Length >= 3 && int.TryParse(e.Args[2], out int step)) wizard.ShowPreviewStep(step); wizard.Left = -10000; wizard.Top = -10000; wizard.Show();
+                await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.ApplicationIdle); wizard.UpdateLayout();
+                var content = (FrameworkElement)wizard.Content; var image = new RenderTargetBitmap((int)content.ActualWidth, (int)content.ActualHeight, 96, 96, PixelFormats.Pbgra32); image.Render(content);
+                var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(image)); using (var file = File.Create(e.Args[1])) png.Save(file);
+                wizard.Close(); Shutdown(); return;
+            }
+            if (e.Args.Length == 3 && e.Args[0] == "--worker" && int.TryParse(e.Args[2], out int parentId))
+            {
+                try { await EngineWorker.RunAsync(e.Args[1], parentId); Shutdown(); }
+                catch (Exception ex) { AppLog.Write("Worker fatal", ex.ToString()); Shutdown(1); }
+                return;
+            }
             if (e.Args.Length == 2 && e.Args[0] == "--check-update")
             {
                 var release = await Updates.CheckAsync();
@@ -48,5 +71,12 @@ public partial class App : Application
         }
         catch (Exception ex) { AppLog.Write("Startup", ex.ToString()); MessageBox.Show("SilNet açılamadı: " + ex.Message + "\n\nGünlük: " + AppLog.DirectoryPath, "SilNet"); Shutdown(1); }
     }
-    protected override void OnExit(ExitEventArgs e) { instance?.Dispose(); base.OnExit(e); }
+    protected override void OnExit(ExitEventArgs e)
+    {
+        try { instance?.ReleaseMutex(); } catch { } instance?.Dispose();
+        AppLog.Suppress = true;
+        if (CleanupUserData) { try { if (Directory.Exists(Settings.DirectoryPath)) Directory.Delete(Settings.DirectoryPath, true); } catch { } }
+        if (PendingUninstaller is not null && File.Exists(PendingUninstaller)) { try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(PendingUninstaller) { UseShellExecute = true }); } catch { } }
+        base.OnExit(e);
+    }
 }

@@ -65,3 +65,15 @@ begin
     end;
   end;
 end;
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var DataPath: String;
+begin
+  if (CurUninstallStep = usPostUninstall) and (not UninstallSilent) then
+  begin
+    if MsgBox('SilNet kişisel ayarları, bağlantı hafızası ve günlükleri de silinsin mi? Diğer programların dosyaları ve ortak sürücüler silinmez.', mbConfirmation, MB_YESNO) = IDYES then
+    begin
+      DataPath := ExpandConstant('{localappdata}\SilNet');
+      DelTree(DataPath, True, True, True);
+    end;
+  end;
+end;

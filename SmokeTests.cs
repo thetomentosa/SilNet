@@ -50,13 +50,26 @@ public static class SmokeTests
             await ipc.PingAsync();
             checks.Add("PASS: Yardımcı beklenmedik kapanınca aynı istemci yeni pipe bağlantısı kurar");
         }
-        await using (var reconnect = new EngineClient(false)) { await reconnect.PingAsync(); }
+        var reconnect = new EngineClient(false); await reconnect.PingAsync();
+        await reconnect.DisposeAsync();
+        Check(reconnect.LastExitCode == 0, "Arayüz kapatınca yardımcı 0 koduyla ve hata penceresi olmadan sonlanır");
         checks.Add("PASS: Pipe kapanışından sonra yeni bağlantı");
         Check(Updates.IsNewer("v0.10.0", "0.2.0"), "Sürüm kıyaslaması sayısal yapılır");
         Check(!Updates.IsNewer("v0.2.0", "0.2.0"), "Aynı sürüm güncelleme olarak gösterilmez");
         Check(!Updates.IsTrustedReleasePage(new Uri("https://github.com.evil.example/thetomentosa/SilNet/releases/v1")), "Sahte GitHub alan adı reddedilir");
         Check(!Updates.IsTrustedReleasePage(new Uri("https://github.com/other/SilNet/releases/v1")), "Başka depodan güncelleme reddedilir");
         Check(Provider.All.All(p => p.Candidates.All(id => Profile.All.Any(x => x.Id == id))), "Bütün sağlayıcı profilleri geçerli motor yöntemlerine bağlıdır");
+        var dns = Convert.FromHexString("12340100000100000000000007646973636F726403636F6D0000010001");
+        var packet = new byte[28 + dns.Length]; packet[0] = 0x45; packet[9] = 17; packet[12] = 10; packet[15] = 2; packet[16] = 192; packet[17] = 168; packet[18] = 1; packet[19] = 1;
+        packet[20] = 0xC4; packet[21] = 0x50; packet[23] = 53; packet[25] = (byte)(8 + dns.Length); dns.CopyTo(packet, 28);
+        Check(DnsBypass.TryQuestion(packet, out var question) && question.Host == "discord.com", "IPv4 UDP DNS sorusu doğru ayrıştırılır");
+        Check(DnsBypass.Matches("updates.discord.com", ["discord.com"]) && !DnsBypass.Matches("evildiscord.com", ["discord.com"]) && !DnsBypass.Matches("discord.com.evil.net", ["discord.com"]), "DNS hedef sınırı yalnızca gerçek alt alan adlarını kapsar");
+        var merged = TargetService.Merge(["discord.com", "private.example.com"], [TargetService.All.Single(s => s.Id == "roblox")]);
+        Check(merged.Contains("private.example.com") && merged.Contains("roblox.com") && !merged.Contains("discord.com"), "Uygulama seçimi özel alan adlarını korur ve kaldırılan seçimi temizler");
+        Check(!DnsBypass.TryQuestion(packet.AsSpan(0, 31), out _), "Kesilmiş DNS paketi değiştirilmeden bırakılır");
+        var answer = dns.ToArray(); answer[2] = 0x81; answer[3] = 0x80;
+        var reply = DnsBypass.BuildResponse(packet, question, answer);
+        Check(reply[12] == 192 && reply[16] == 10 && reply[21] == 53 && reply[22] == 0xC4 && reply[23] == 0x50 && reply[28] == 0x12 && reply[29] == 0x34, "DNS yanıtı IP/port yönlerini ve işlem kimliğini korur");
         checks.Add("NOT RUN: Yönetici izniyle WinDivert yükleme / gerçek ISS erişimi / UDP");
         await File.WriteAllTextAsync(destination, JsonSerializer.Serialize(checks, new JsonSerializerOptions { WriteIndented = true }));
     }
@@ -73,6 +86,8 @@ public static class SmokeTests
             await engine.DryRunAsync(profile.Id, Domains.Defaults);
             await Record("PASS: Gerçek winws2 --dry-run: " + profile.Id);
         }
+        await engine.DryRunAsync(Profile.All[0].Id, Domains.Defaults, includeQuic: true);
+        await Record("PASS: İsteğe bağlı QUIC profili de gerçek motor tarafından kabul edildi.");
         if (Diagnostics.Conflicts().Length > 0) { await Record("SKIP: Başka DPI motoru çalıştığı için canlı sürücü testi yapılmadı."); return; }
         foreach (var profile in Profile.All)
         {

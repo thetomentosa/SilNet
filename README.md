@@ -5,16 +5,16 @@
 
 SilNet, Zapret2 motorunu basit bir Türkçe arayüzle yönetir. Sağlayıcını seçip **Bağlan** düğmesine basarsın. Uygulama önce mevcut erişimi kontrol eder, gerekirse sağlayıcına göre sıralanmış yöntemleri dener. Doğrulanan son yöntem o ağ için yalnızca cihazında hatırlanır.
 
-> Bu bir geliştirme önizlemesidir. Bütün internet sağlayıcılarında çalışma veya engel aşımı garantisi yoktur. VPN değildir; IP adresini gizlemez.
+> Bütün internet sağlayıcılarında çalışma veya engel aşımı garantisi yoktur. VPN değildir; IP adresini gizlemez.
 
 ## İndir ve kullan
 
 1. [Son sürümden](https://github.com/thetomentosa/SilNet/releases/latest) **SilNet-Setup-…-win-x64.exe** dosyasını indirip kur. Kurulum mevcut kullanıcı içindir.
 2. SilNet’i aç, internet sağlayıcını seç. Bilmiyorsan **Otomatik / bilmiyorum** seçili kalabilir.
-3. Discord, Roblox veya YouTube hedeflerini seç. Başka alan adları **Siteler** bölümünden eklenebilir.
+3. İlk kurulum adımlarında sağlayıcını ve 14 uygulama arasından hedeflerini seç. Özel alan adları Uygulamalar bölümünden eklenebilir.
 4. **Bağlan** düğmesine bas. Windows’un motor için gösterdiği yönetici iznini onayla.
 5. Sonucu ana ekranda, ayrıntıları **Tanılama** bölümünde gör.
-6. **Durdur** düğmesine basınca veya pencereyi kapatınca SilNet’in motoru sonlanır.
+6. **Durdur** motoru durdurur. X düğmesi uygulamayı sistem tepsisine küçültür; tamamen kapatmak için tepsi menüsünden **Çıkış** seçilir.
 
 Taşınabilir ZIP de sunulur. Tamamını aynı klasöre çıkarıp `SilNet.exe` dosyasını aç. EXE’yi tek başına başka yere taşıma: `engines` klasörü de gereklidir. .NET çalışma zamanı pakete dahildir; kullanıcıdan ek yazılım, Inno Setup veya ücretli hizmet kurulumu istenmez.
 
@@ -30,7 +30,7 @@ Türk Telekom, Superonline, TurkNet, Vodafone Net, Kablonet, Millenicom, Netspee
 - Son başarılı yöntem önce denenir; ağ değişirse önceki test yeni ağa uygulanmaz.
 - “Uygun yöntemi otomatik bul” kapatılarak elle yöntem seçilebilir.
 
-Otomatik seçim tam blockcheck değildir: seçilen hedeflerin en fazla üçü, sınırlı sayıda aday yöntemle HTTPS üzerinden sınanır. HTTP 403/429, DNS arızası ve hedef sunucu hataları da erişimin doğrulanamamasına neden olabilir. Kısmi erişim açıkça belirtilir; tamamen başarılı profil olarak kaydedilmez. DNS çözümlenemiyorsa önce DNS/internet sorunu giderilmelidir.
+Otomatik seçim tam blockcheck değildir: seçilen hedeflerin en fazla üçü, sınırlı sayıda aday yöntemle HTTPS üzerinden sınanır. HTTP 403/429, DNS arızası ve hedef sunucu hataları da erişimin doğrulanamamasına neden olabilir. Kısmi erişim açıkça belirtilir; tamamen başarılı profil olarak kaydedilmez. Seçili alan adlarının UDP DNS sorguları isteğe bağlı geçici DoH desteğiyle çözümlenir. Google ve Cloudflare çözümleyicileri kullanılır; kalıcı adaptör DNS ayarı değiştirilmez.
 
 ## Güvenlik ve gizlilik
 
@@ -53,7 +53,7 @@ Otomatik kontrol **Ayarlar** bölümünden kapatılabilir. GitHub erişilemiyors
 
 ## Kapsam
 
-HTTPS (TCP 443) ve QUIC (UDP 443) profilleri vardır. Discord sesli görüşmesi/STUN, konsollara ağ paylaşımı ve uygulama bazlı VPN tünellemesi bu sürümde yoktur. Siteye HTTPS erişimi; hesap girişini, bütün uygulama işlevlerini veya sesli görüşmeyi kanıtlamaz.
+Varsayılan motor kapsamı HTTPS (TCP 443) ile sınırlıdır. QUIC (UDP 443) desteği Ayarlar bölümünden isteğe bağlı açılır ve varsayılan kapalıdır. HTTPS test süresi DNS, bağlantı ve HTTP yanıtını kapsar; Discord ses gecikmesi veya oyun pingi değildir. Sıfır gecikme etkisi garanti edilmez. Discord sesli görüşmesi/STUN, konsollara ağ paylaşımı ve uygulama bazlı VPN tünellemesi bu sürümde yoktur. Siteye HTTPS erişimi; hesap girişini, bütün uygulama işlevlerini veya sesli görüşmeyi kanıtlamaz.
 
 ## Kaynaktan derle
 
@@ -91,3 +91,7 @@ git push origin main --tags
 ```
 
 MIT lisansı yalnızca özgün SilNet koduna uygulanır. Üçüncü taraf bileşenlerin lisansları ve kaynakları `licenses` klasöründedir. Kalpli S logosu ImageGen ile üretilmiştir; son tasarım mavi gradyandır.
+
+## Kaldırma
+
+Windows Yüklü uygulamalar veya SilNet Ayarlar bölümündeki kaldırıcı kullanılabilir. Kaldırıcı kişisel ayar ve günlükleri temizlemeyi ayrıca sorar; sessiz kaldırma bunları korur. Taşınabilir sürümde önce tepsi menüsünden çıkıp klasörü kaldır. SilNet başka programların ortak sürücülerini kaldırmaz.

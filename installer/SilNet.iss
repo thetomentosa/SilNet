@@ -11,9 +11,9 @@
   #error DriverSha must be supplied by scripts/build.ps1
 #endif
 #ifndef FullPackage
-  #define FullPackage 0
+  #define FullPackage "0"
 #endif
-#if FullPackage
+#if FullPackage == "1"
   #define PackageSuffix "Full-"
 #else
   #define PackageSuffix ""
@@ -62,7 +62,7 @@ Name: "{autodesktop}\SilNet"; Filename: "{app}\SilNet.exe"; Tasks: desktopicon
 [Run]
 Filename: "{app}\SilNet.exe"; Description: "SilNet’i aç"; Flags: nowait postinstall skipifsilent
 [Code]
-#if !FullPackage
+#if FullPackage == "0"
 #include "dotnet-bootstrap.iss"
 #endif
 function DriverNeedsCopy: Boolean;

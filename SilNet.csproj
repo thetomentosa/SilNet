@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>SilNet</AssemblyName>
-    <Version>0.3.1</Version>
+    <Version>0.3.2</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <DebugType>none</DebugType>
     <ApplicationIcon>Assets\SilNet.ico</ApplicationIcon>

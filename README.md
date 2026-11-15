@@ -9,14 +9,16 @@ SilNet, Zapret2 motorunu basit bir Türkçe arayüzle yönetir. Sağlayıcını 
 
 ## İndir ve kullan
 
-1. [Son sürümden](https://github.com/thetomentosa/SilNet/releases/latest) **SilNet-Setup-…-win-x64.exe** dosyasını indirip kur. Kurulum mevcut kullanıcı içindir.
+1. [Son sürümden](https://github.com/thetomentosa/SilNet/releases/latest) **SilNet-Setup-…-win-x64.exe** küçük kurulum dosyasını indirip kur. Kurulum mevcut kullanıcı içindir. Uyumlu .NET 10 x64 Desktop Runtime eksikse Microsoft'tan otomatik indirilir, SHA-256 özeti doğrulanır ve kurulur. Windows'un yönetici izni penceresini onaylamak gerekebilir; başka bir indirme sayfası açılmaz.
 2. SilNet’i aç, internet sağlayıcını seç. Bilmiyorsan **Otomatik / bilmiyorum** seçili kalabilir.
 3. İlk kurulum adımlarında sağlayıcını ve 14 uygulama arasından hedeflerini seç. Özel alan adları Uygulamalar bölümünden eklenebilir.
 4. **Bağlan** düğmesine bas. Windows’un motor için gösterdiği yönetici iznini onayla.
 5. Sonucu ana ekranda, ayrıntıları **Tanılama** bölümünde gör.
 6. **Durdur** motoru durdurur. X düğmesi uygulamayı sistem tepsisine küçültür; tamamen kapatmak için tepsi menüsünden **Çıkış** seçilir.
 
-Taşınabilir ZIP de sunulur. Tamamını aynı klasöre çıkarıp `SilNet.exe` dosyasını aç. EXE’yi tek başına başka yere taşıma: `engines` klasörü de gereklidir. .NET çalışma zamanı pakete dahildir; kullanıcıdan ek yazılım, Inno Setup veya ücretli hizmet kurulumu istenmez.
+**Tam kurulum:** `SilNet-Setup-Full-…-win-x64.exe` .NET çalışma zamanını içerir ve kurulum için internet gerektirmez. Küçük ve tam paket aynı uygulamayı kurar; aralarında geçişte ayarlar korunur. İndirme başarısızsa küçük paket kuruluma başlamadan hata gösterir. Kaldırma paylaşılan .NET'i kaldırmaz.
+
+Taşınabilir ZIP de tam pakettir. Tamamını aynı klasöre çıkarıp `SilNet.exe` dosyasını aç. EXE’yi tek başına başka yere taşıma: `engines` klasörü de gereklidir. Son kullanıcıya Inno Setup veya SDK gerekmez. Hesap, abonelik ve ücretli hizmet yoktur.
 
 Windows 10 2004 veya sonrası / Windows 11, **x64** gerektirir. ARM64 desteklenmez. İmzasız bir önizlemedir; Windows yayıncı/SmartScreen uyarısı gösterebilir. Güvenlik korumalarını otomatik kapatmaz.
 
@@ -80,7 +82,7 @@ Self-test alan adı doğrulamasını, değiştirilmiş motor dosyasını reddetm
 
 ## GitHub yayını
 
-`main` değişiklikleri Windows CI’da derlenir ve test edilir. `vX.Y.Z` etiketi gönderilince workflow kurulum EXE’si, taşınabilir ZIP ve SHA-256 listesiyle GitHub Release oluşturur. Sürüm notları `RELEASE_NOTES.md` dosyasından alınır.
+`main` değişiklikleri Windows CI’da derlenir ve test edilir. `vX.Y.Z` etiketi gönderilince workflow küçük kurulum, tam kurulum, tam taşınabilir ZIP ve SHA-256 listesiyle GitHub Release oluşturur. İki paketin kurulu uygulama testleri, küçük → tam → küçük geçişi ve kaldırma CI makinesinde kontrol edilir. Sürüm notları `RELEASE_NOTES.md` dosyasından alınır. Runtime URL'si ve SHA-256 özeti `installer/dotnet-runtime.json` dosyasında sabittir. Yenilenirken Microsoft'un resmi release metadata SHA-512 özeti de doğrulanmalıdır.
 
 ```powershell
 # SilNet.csproj Version ve RELEASE_NOTES.md güncellendikten sonra:

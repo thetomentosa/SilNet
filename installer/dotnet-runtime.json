@@ -1,0 +1,6 @@
+{
+  "version": "10.0.15",
+  "url": "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/10.0.15/windowsdesktop-runtime-10.0.15-win-x64.exe",
+  "sha256": "e61b030c1673edfa3c0844502eff83198c46af9e7df70dfc6e2efc5b11ea513a",
+  "upstreamSha512": "f838960962172f1a769c49fa600e6f60f56f8d08a28e3cb878890ffc2e3a7a2e1b65697588e23efa767b8b8e8523ec01f55e875120507dde16d9a0869102dab3"
+}

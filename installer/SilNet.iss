@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.2.0"
+  #define AppVersion "0.3.2"
 #endif
 #ifndef PublishDir
   #define PublishDir SourcePath + "..\artifacts\portable"
@@ -9,6 +9,17 @@
 #endif
 #ifndef DriverSha
   #error DriverSha must be supplied by scripts/build.ps1
+#endif
+#ifndef FullPackage
+  #define FullPackage 0
+#endif
+#if FullPackage
+  #define PackageSuffix "Full-"
+#else
+  #define PackageSuffix ""
+  #ifndef RuntimeUrl
+    #error RuntimeUrl and RuntimeSha must be supplied by scripts/build.ps1
+  #endif
 #endif
 [Setup]
 AppId={{E581D4D0-6AD9-4ED3-8A84-7570DE5359DE}
@@ -29,7 +40,7 @@ UninstallDisplayIcon={app}\SilNet.exe
 SetupIconFile=..\Assets\SilNet.ico
 LicenseFile=..\LICENSE
 OutputDir={#ReleaseDir}
-OutputBaseFilename=SilNet-Setup-{#AppVersion}-win-x64
+OutputBaseFilename=SilNet-Setup-{#PackageSuffix}{#AppVersion}-win-x64
 Compression=lzma2/normal
 SolidCompression=yes
 WizardStyle=modern
@@ -51,6 +62,9 @@ Name: "{autodesktop}\SilNet"; Filename: "{app}\SilNet.exe"; Tasks: desktopicon
 [Run]
 Filename: "{app}\SilNet.exe"; Description: "SilNet’i aç"; Flags: nowait postinstall skipifsilent
 [Code]
+#if !FullPackage
+#include "dotnet-bootstrap.iss"
+#endif
 function DriverNeedsCopy: Boolean;
 var DriverPath: String;
 begin

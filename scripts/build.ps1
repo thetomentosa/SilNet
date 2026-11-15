@@ -15,13 +15,16 @@ Push-Location $repoRoot
 try {
     python prepare_engine.py
     if ($LASTEXITCODE -ne 0) { throw 'Motor dosyaları doğrulanamadı.' }
-    & $Dotnet publish SilNet.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o $publishRoot
-    if ($LASTEXITCODE -ne 0) { throw 'Derleme başarısız.' }
-    Copy-Item -LiteralPath LICENSE,README.md -Destination $publishRoot
-    $exe = Join-Path $publishRoot 'SilNet.exe'
-    $report = Join-Path $releaseRoot 'test-results.json'
-    $test = Start-Process -FilePath $exe -ArgumentList @('--self-test', ('"'+$report+'"')) -WindowStyle Hidden -Wait -PassThru
-    if ($test.ExitCode -ne 0) { throw ('Kontroller başarısız: ' + $report) }
+    $smallRoot = Join-Path $releaseRoot 'small'
+    foreach ($package in @(@{Path=$publishRoot; SelfContained='true'; Report='test-results.json'}, @{Path=$smallRoot; SelfContained='false'; Report='test-results-small.json'})) {
+        & $Dotnet publish SilNet.csproj -c Release -r win-x64 --self-contained $package.SelfContained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o $package.Path
+        if ($LASTEXITCODE -ne 0) { throw 'Derleme başarısız.' }
+        Copy-Item -LiteralPath LICENSE,README.md -Destination $package.Path
+        $exe = Join-Path $package.Path 'SilNet.exe'
+        $report = Join-Path $releaseRoot $package.Report
+        $test = Start-Process -FilePath $exe -ArgumentList @('--self-test', ('"'+$report+'"')) -WindowStyle Hidden -Wait -PassThru
+        if ($test.ExitCode -ne 0) { throw ('Kontroller başarısız: ' + $report) }
+    }
     $zipPath = Join-Path $releaseRoot ("SilNet-"+$version+'-win-x64-portable.zip')
     Compress-Archive -Path (Join-Path $publishRoot '*') -DestinationPath $zipPath -Force
     if (!$SkipInstaller) {
@@ -33,9 +36,13 @@ try {
             elseif (Test-Path 'C:\Program Files (x86)\Inno Setup 7\ISCC.exe') { $Iscc = 'C:\Program Files (x86)\Inno Setup 7\ISCC.exe' }
             else { throw 'Inno Setup derleyicisi bulunamadı. -Iscc ile yolunu belirtin.' }
         }
-        $driverSha = (Get-FileHash -LiteralPath (Join-Path $publishRoot 'engines\zapret2\WinDivert64.sys') -Algorithm SHA256).Hash
-        & $Iscc ('/DAppVersion='+$version) ('/DPublishDir='+$publishRoot) ('/DReleaseDir='+$releaseRoot) ('/DDriverSha='+$driverSha) (Join-Path $repoRoot 'installer\SilNet.iss')
-        if ($LASTEXITCODE -ne 0) { throw 'Kurulum paketi oluşturulamadı.' }
+        $runtime = Get-Content -LiteralPath (Join-Path $repoRoot 'installer/dotnet-runtime.json') -Raw | ConvertFrom-Json
+        if ($runtime.url -notmatch '^https://builds\.dotnet\.microsoft\.com/dotnet/WindowsDesktop/10\.0\.[0-9]+/windowsdesktop-runtime-10\.0\.[0-9]+-win-x64\.exe$' -or $runtime.sha256 -notmatch '^[a-f0-9]{64}$') { throw 'Geçersiz .NET runtime manifesti.' }
+        foreach ($package in @(@{Path=$smallRoot; Full='0'}, @{Path=$publishRoot; Full='1'})) {
+            $driverSha = (Get-FileHash -LiteralPath (Join-Path $package.Path 'engines\zapret2\WinDivert64.sys') -Algorithm SHA256).Hash
+            & $Iscc ('/DAppVersion='+$version) ('/DPublishDir='+$package.Path) ('/DReleaseDir='+$releaseRoot) ('/DDriverSha='+$driverSha) ('/DFullPackage='+$package.Full) ('/DRuntimeUrl='+$runtime.url) ('/DRuntimeSha='+$runtime.sha256) (Join-Path $repoRoot 'installer\SilNet.iss')
+            if ($LASTEXITCODE -ne 0) { throw 'Kurulum paketi oluşturulamadı.' }
+        }
     }
     $checksums = Get-ChildItem -LiteralPath $releaseRoot -File | Where-Object { $_.Name -match '^SilNet-.*\.(zip|exe)$' } | ForEach-Object {
         ((Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() + '  ' + $_.Name)
